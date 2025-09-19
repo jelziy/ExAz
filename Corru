@@ -1,0 +1,119 @@
+using { /Fortnite.com }
+using { /Fortnite.com/Animation }
+using { /Fortnite.com/Animation/PlayAnimation }
+using { /Fortnite.com/Characters }
+using { /Fortnite.com/Devices }
+using { /UnrealEngine.com/Temporary/Diagnostics }
+using { /UnrealEngine.com/Temporary/SpatialMath }
+using { /UnrealEngine.com/Temporary/UI }
+using { /Verse.org }
+using { /Verse.org/Assets }
+using { /Verse.org/Simulation }
+
+
+Sneak_ChokE := class(creative_device): 
+    
+    @editable InputE : input_trigger_device = input_trigger_device{}
+    @editable Trigger : trigger_device = trigger_device{}
+    @editable GuardSpawner : guard_spawner_device = guard_spawner_device{}
+    
+    var CustomGuardMap : [agent]custom_guard1 = map{}
+    var IsInputEnabled : logic = false
+    @editable MinEnableDist : float = 0.0 # Adjust this value based on your need
+    @editable MaxEnableDist : float = 125.0
+    # Runs when the device is started in a running game
+    
+    OnBegin<override>()<suspends>:void=(
+        GuardSpawner.SpawnedEvent.Subscribe(HandleGuardSpawn)
+        InputE.PressedEvent.Subscribe(HandleTrigger)
+        spawn{CheckAllPlayersLoop()}
+        InputE.Disable()
+    )
+
+    HandleGuardSpawn(GuardAgent : agent):void= (
+        if(GuardFc := GuardAgent.GetFortCharacter[]):
+            NewGuard := custom_guard1{GuardFc:=GuardFc}
+            
+            if(set CustomGuardMap[GuardAgent] = NewGuard):
+    )
+
+    CheckAllPlayersLoop()<suspends>:void=(
+        loop:
+            for (PlayerAgent : GetPlayspace().GetPlayers()):
+                for (GuardAgent -> CustomGuard: CustomGuardMap):
+                    CheckPlayerPosition(PlayerAgent, GuardAgent)
+            Sleep(0.1)
+    )
+
+    CheckPlayerPosition(PlayerAgent:agent, GuardAgent:agent):void=(      
+        if:
+            PlayerChar := PlayerAgent.GetFortCharacter[]
+            GuardChar := GuardAgent.GetFortCharacter[]
+            PlayerTransform := PlayerChar.GetTransform()
+            GuardTransform := GuardChar.GetTransform()
+        then:
+            PlayerPos := PlayerTransform.Translation
+            GuardPos := GuardTransform.Translation
+            GuardForward := GuardTransform.Rotation.GetLocalForward()
+
+            ToPlayer := PlayerPos - GuardPos
+        
+            if(ToPlayerNormalized := ToPlayer.MakeUnitVector[]):
+                Dot := DotProduct(ToPlayerNormalized, GuardForward)
+                DistanceToPlayer := Distance(PlayerPos, GuardPos)
+                
+
+                if (Dot > 0.0 and DistanceToPlayer <= MaxEnableDist and DistanceToPlayer >= MinEnableDist):
+                    if (IsInputEnabled = false):
+                        InputE.Enable()
+                        set IsInputEnabled = true
+                        Print("Trigger Enabled")
+                else:
+                    if (IsInputEnabled = true):
+                        InputE.Disable()
+                        set IsInputEnabled = false
+                        Print("Trigger Disabled")
+
+    )
+
+    HandleTrigger(_Agent:agent):void=(
+        for(CustomGuard:CustomGuardMap):
+            spawn{CustomGuard.HandleAnim(_Agent)}
+    )
+    
+    DiableF():void=(
+        InputE.Disable
+    )
+
+custom_guard1 := class<unique>():
+    GuardFc : fort_character
+    var IsPlaying : logic = false
+    @editable var DistanceFromPlayer : float = 120.0
+    @editable var HeightOffset : float = -80.0
+   
+    HandleAnim(PlayerAgent:agent)<suspends>: void =(
+        if(GuardFc.IsActive[]):
+            if(IsPlaying = false):
+                set IsPlaying = true
+                if(PlayerChar := PlayerAgent.GetFortCharacter[]):
+                    PlayerTransform := PlayerChar.GetTransform()
+                    #PlayerForward := PlayerTransform.Rotation.GetLocalForward()
+                    PlayerRotation := PlayerTransform.Rotation
+
+                    BasePosition := PlayerTransform.Translation + (PlayerRotation.GetLocalForward() * DistanceFromPlayer)
+                    NewPosition := vector3{X := BasePosition.X, Y := BasePosition.Y, Z := BasePosition.Z + HeightOffset}
+                    OppositeRotation := PlayerRotation.RotateBy(MakeRotation(vector3{X := 0.0, Y := 0.0, Z := 1.0}, 3.141592653589793))
+                    if(GuardFc.TeleportTo[NewPosition, OppositeRotation]):
+                        GuardFc.PutInStasis(stasis_args{AllowTurning := false, AllowFalling := false})
+                        Print("TEleportation of a npc is obeyed and is in stasis")
+                    if(AnimController := GuardFc.GetPlayAnimationController[]):
+                        Instance := AnimController.Play(FnANima.T1_Paired_ForceChoke_Vic, ?BlendInTime := 1.5)
+                        Print("Done")
+                        loop:
+                            Instance.Await()
+                            GuardFc.Damage(200.0)
+                            GuardFc.ReleaseFromStasis()
+                            set IsPlaying = false
+                            break
+        )
+        
