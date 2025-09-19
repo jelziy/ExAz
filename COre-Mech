@@ -1,0 +1,72 @@
+using { /Fortnite.com }
+using { /Fortnite.com/Characters }
+using { /Fortnite.com/Devices }
+using { /UnrealEngine.com/Temporary/Diagnostics }
+using { /UnrealEngine.com/Temporary/SpatialMath }
+using { /UnrealEngine.com/Temporary/UI }
+using { /Verse.org/Simulation }
+
+#if crouched devide hightoffset by 2
+Core_Mech := class(creative_device):
+
+    @editable Chair : chair_device = chair_device{}
+    @editable DistFront : float = 200.0
+    @editable Button : button_device = button_device{}
+    @editable HightOffset : float = -80.0
+    @editable SleepTime : float = 0.0
+    @editable AniTime : float = 3.0
+    @editable InputA : input_trigger_device = input_trigger_device{}
+
+    # Runs when the device is started in a running game
+    OnBegin<override>()<suspends>:void=(
+        #Button.InteractedWithEvent.Subscribe(TeleChair)
+        InputA.PressedEvent.Subscribe(TeleChair)         
+    )
+
+    TeleChair(Agent : agent): void=(
+        Players := GetPlayspace().GetPlayers()
+        for (Player : Players, Character := Player.GetFortCharacter[]):     #idk which one would work or #if (Player := Players, CH1 := Player.GetFortCharacter[]):
+            PlayTform := Character.GetTransform()                            #gets Players current transform
+
+            ForwardOffset := PlayTform.Rotation.GetLocalForward() * DistFront  #Calculate forward vector scaled by distance
+            
+            NewPositon := vector3{                                             #Create new position in front of player with height offset
+                X := PlayTform.Translation.X,
+                Y := PlayTform.Translation.Y,
+                Z := PlayTform.Translation.Z + HightOffset
+            }
+
+            NewTransform := transform{                                     # Create new transform with same rotation as player
+                Translation := NewPositon,
+                Rotation := PlayTform.Rotation,
+                Scale := PlayTform.Scale
+            }
+                       
+            if (Chair.TeleportTo[NewTransform]):
+                Print("Chair teleported succesfully")                       # Teleport chair to new position
+                Chair.Seat(Agent)                                           # Seat the agent on the chair after teleporting
+                spawn{EjectAfterDelay(Agent)}
+                InputA.Disable()
+                spawn{TelePros(Agent)}                               # Spawn a new suspending task to eject the agent after 3 seconds
+            else:
+                ("Failed to Teleport Chair")
+       )
+    
+    EjectAfterDelay(Agent : agent)<suspends>: void=(               ## Suspends for 3 seconds, then ejects the agent from the chair
+        Sleep(SleepTime)
+        #Chair.Eject(Agent)
+        #InputA.Enable()
+    )
+
+    TelePros(Agent:agent)<suspends>:void=(
+    Sleep(AniTime)
+    Players := GetPlayspace().GetPlayers()
+    for (Player : Players, Charac := Player.GetFortCharacter[]):     #idk which one would work or #if (Player := Players, CH1 := Player.GetFortCharacter[]):
+        PlayTform := Charac.GetTransform()                            #gets Players current transform
+        if (Charac.TeleportTo[vector3{X:=PlayTform.Translation.X, Y := PlayTform.Translation.Y,
+                                Z:= PlayTform.Translation.Z}, Rotation := PlayTform.Rotation]):
+            Print("Player Teleported Succesfully")
+        
+   )
+   
+  #Root motion not possible
