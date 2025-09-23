@@ -1,0 +1,32 @@
+
+using { /Fortnite.com/Devices }
+using { /Verse.org/Simulation }
+using { /UnrealEngine.com/Temporary/Diagnostics }
+
+PPV := class(creative_device):
+    @editable inputse : input_trigger_device = input_trigger_device{}
+
+    @editable
+    PPD : post_process_device = post_process_device{}
+    var IsEnabled : logic = false
+     
+    OnBegin<override>()<suspends>:void=(
+        inputse.PressedEvent.Subscribe(Ena)
+        inputse.ReleasedEvent.Subscribe(DenatAdapter)
+    )
+
+    Ena(Agent:agent):void=(
+       if (IsEnabled = false):
+          PPD.Enable()
+          set IsEnabled = true
+    )
+    
+    DenatAdapter(Agent:agent, HoldTime:float):void=
+        Denat(Agent)
+ 
+    # Custom disable function with correct signature
+    Denat(Agent:agent):void=
+        if (IsEnabled = true):
+            PPD.Disable()
+            set IsEnabled = false
+        
