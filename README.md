@@ -7,7 +7,8 @@ Animation needs to be adjusted inside the verse code. It's simple, add how many 
 
 🔗 Social Links    
 
-<img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/jelZiy?style=for-the-badge">
-
+<a href="https://twitter.com/jelZiy" target="_blank">
+  <img alt="X (formerly Twitter) Follow" src="https://img.shields.io/twitter/follow/jelZiy?style=for-the-badge">
+</a>
 
 
