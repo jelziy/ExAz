@@ -1,0 +1,28 @@
+using { /Fortnite.com/Characters }
+using { /Fortnite.com/Devices }
+using { /UnrealEngine.com/Temporary/Diagnostics }
+using { /Verse.org/Simulation }
+using { /UnrealEngine.com/Temporary/SpatialMath }
+
+
+
+Crunch_Assistant := class(creative_device):
+
+    # Runs when the device is started in a running game
+    OnBegin<override>()<suspends>:void=(
+
+    )
+
+    LocateNearestPlayer(NpcFortChar : fort_character, DetectionRadius : float)<decides><transacts>:fort_character=(
+        var MaybePlayer : ?fort_character = false
+
+        for(Player : GetPlayspace().GetPlayers(), PlayerFortChar := Player.GetFortCharacter[]):
+            DistanceBetnNpcandPlayer := Distance(NpcFortChar.GetTransform().Translation, PlayerFortChar.GetTransform().Translation)
+            Print("Distance from nearest player {DistanceBetnNpcandPlayer}")
+
+            if(DistanceBetnNpcandPlayer <= DetectionRadius):
+                set MaybePlayer = option{PlayerFortChar}
+
+
+        return MaybePlayer?
+    )
