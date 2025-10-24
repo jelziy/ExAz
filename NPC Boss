@@ -1,4 +1,4 @@
-#credit Mango Uefn
+#credit Mango UEFN
 using { /Fortnite.com/AI }
 using { /Fortnite.com/Animation/PlayAnimation }
 using { /Fortnite.com/Characters }
@@ -19,7 +19,6 @@ attack_data := struct:
     
 
 Crunch_behaviour := class(npc_behavior):
-    @editable AudioDevice : Audio = Audio{}
     var Attacks : []attack_data = array{}
 
     NpcAssistant : Custom_Crunch_assistant = Custom_Crunch_assistant{}
@@ -89,8 +88,7 @@ Crunch_behaviour := class(npc_behavior):
                                 spawn{NpcFocus.MaintainFocus(NearestAgent)}
 
                             if(Anim := SelectedAttack.Animation?): # Play the attack animation and apply damage
-                                NpcAnim.Play(Anim)
-                                AudioDevice.MeeleSoundPlayer(NpcFortChar)
+                                NpcAnim.Play(Animm)           
                             Sleep(1.0)
 
                             FinalDists := Distance(NpcFortChar.GetTransform().Translation, NearestTarget.GetTransform().Translation)
@@ -104,8 +102,7 @@ Crunch_behaviour := class(npc_behavior):
                             NpcNav.StopNavigation()
                             spawn{NpcFocus.MaintainFocus(NearestAgent)}
                             if(Anim := SelectedAttack.Animation?):
-                                NpcAnim.Play(Anim)
-                                AudioDevice.RangedSoundPlayer(NpcFortChar)
+                                NpcAnim.Play(Anim)                     
                             NearestTarget.Damage(SelectedAttack.Damage)
                             Print("Ranged attack dealt {SelectedAttack.Damage} damage")                       
     )
