@@ -1,0 +1,116 @@
+#credit Mango Uefn
+using { /Fortnite.com/AI }
+using { /Fortnite.com/Animation/PlayAnimation }
+using { /Fortnite.com/Characters }
+using { /UnrealEngine.com/Temporary/SpatialMath }
+using { /Verse.org/Assets }
+using { /Verse.org/Random }
+using { /Verse.org/SceneGraph }
+using { /Verse.org/Simulation }
+using { Mech }
+ 
+NpcBehaviourStates := enum{Idle, Alerted}
+
+attack_data := struct:
+    Animation : ?animation_sequence
+    Damage : float
+    Range : float
+    
+    
+
+Crunch_behaviour := class(npc_behavior):
+    @editable AudioDevice : Audio = Audio{}
+    var Attacks : []attack_data = array{}
+
+    NpcAssistant : Custom_Crunch_assistant = Custom_Crunch_assistant{}
+    var CurrentState : NpcBehaviourStates = NpcBehaviourStates.Idle
+    Attack1 : animation_sequence = AniCrunch.Anim_SciFi_ToiletMech_Attack4
+
+    # This function runs when the NPC is spawned in the world and ready to follow a behavior.
+    OnBegin<override>()<suspends>:void=(
+        #set up attack option
+        set Attacks = array{
+           attack_data{Animation := option{AniCrunch.Anim_SciFi_ToiletMech_Attack4}, Damage := 20.0, Range:= 350.0},
+           attack_data{Animation := option{AniCrunch.Anim_SciFi_ToiletMech_Attack1}, Damage := 30.0, Range := 350.0},
+           attack_data{Animation := option{AniCrunch.Anim_SciFi_ToiletMech_Attack6_Shoot}, Damage := 15.0, Range := 800.0}
+        }
+        if:
+            NpcAgent := GetAgent[]
+            NpcFortChar := NpcAgent.GetFortCharacter[]
+            NpcNav := NpcFortChar.GetNavigatable[]
+            NpcFocus := NpcFortChar.GetFocusInterface[]
+            NpcAnim := NpcFortChar.GetPlayAnimationController[]
+            SpawnLocation := NpcFortChar.GetTransform().Translation
+        then:
+            var SelectedAttack : attack_data = attack_data{Animation := false, Range := 0.0, Damage := 0.0}
+            loop:
+                Sleep(0.1)
+
+                if(not NpcFortChar.IsActive[]): 
+                    Print("Npc dosent exist")
+                    break:
+                
+                if(CurrentState = NpcBehaviourStates.Idle):     #idle state
+
+                    if(NearestTarget := NpcAssistant.LocateNearestPlayer[NpcFortChar, 1000.0]):
+                        set CurrentState = NpcBehaviourStates.Alerted
+
+
+                else if(CurrentState = NpcBehaviourStates.Alerted):     #alerted state
+                    
+                    if(NearestTarget := NpcAssistant.LocateNearestPlayer[NpcFortChar, 1000.0], NearestAgent := NearestTarget.GetAgent[]):
+                        #NavTarget := MakeNavigationTarget(NearestAgent)
+
+                        
+                        AttackIndex := GetRandomInt(0, Attacks.Length - 1)
+                        if (Attack := Attacks[AttackIndex]):
+                            set SelectedAttack = Attack
+
+                            Dists := Distance(NpcFortChar.GetTransform().Translation, NearestTarget.GetTransform().Translation)
+                            MeleeThreshold : float = 400.0
+
+                            if(Dists > SelectedAttack.Range and SelectedAttack.Range < MeleeThreshold): # If not in range AND this is a melee attack, move to target
+                                NavTarget := MakeNavigationTarget(NearestAgent)
+                                NpcNav.NavigateTo(NavTarget)
+                                spawn{NpcFocus.MaintainFocus(NearestAgent)}
+                            
+                                # Poll until in attack range
+                                loop:
+                                    Distsa := Distance(NpcFortChar.GetTransform().Translation, NearestTarget.GetTransform().Translation)
+                                    if (Distsa <= SelectedAttack.Range):
+                                        break:
+                                    Sleep(0.1)
+                                    NpcNav.StopNavigation()
+                                    Print("Reached melee range for attack")
+
+                            else: #
+                                # Optionally, stop moving if currently navigating
+                                NpcNav.StopNavigation()
+                                spawn{NpcFocus.MaintainFocus(NearestAgent)}
+
+                            if(Anim := SelectedAttack.Animation?): # Play the attack animation and apply damage
+                                NpcAnim.Play(Anim)
+                                AudioDevice.MeeleSoundPlayer(NpcFortChar)
+                            Sleep(1.0)
+
+                            FinalDists := Distance(NpcFortChar.GetTransform().Translation, NearestTarget.GetTransform().Translation)
+                            if(FinalDists <= SelectedAttack.Range):
+                                NearestTarget.Damage(SelectedAttack.Damage)
+                                Print("Melee attack dealt {SelectedAttack.Damage} damage")
+                            else:
+                                Print("Target Out Of Range No Melee Damge applied")
+                        
+                        else:
+                            NpcNav.StopNavigation()
+                            spawn{NpcFocus.MaintainFocus(NearestAgent)}
+                            if(Anim := SelectedAttack.Animation?):
+                                NpcAnim.Play(Anim)
+                                AudioDevice.RangedSoundPlayer(NpcFortChar)
+                            NearestTarget.Damage(SelectedAttack.Damage)
+                            Print("Ranged attack dealt {SelectedAttack.Damage} damage")                       
+    )
+    
+    OnEnd<override>():void=(
+
+    )
+        
